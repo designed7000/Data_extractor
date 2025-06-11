@@ -1,0 +1,6 @@
+src/.env
+.venv/
+*.pyc
+__pycache__/
+*.json
+sample_data.txt

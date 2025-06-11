@@ -35,7 +35,7 @@ if __name__ == "__main__":
     Contact us at info@techcorp.com
     """
     
-    # Write the sample file
+    # Writes the above text into a .txt file
     with open('sample_data.txt', 'w', encoding='utf-8') as f:
         f.write(sample_text)
     
