@@ -53,7 +53,7 @@ export-env {
       }
     }
 
-    let virtual_env = '/Users/alexchortis/Desktop/genai_data_extractor/.venv'
+    let virtual_env = '/Users/ac/Desktop/genai_data_extractor/.venv'
     let bin = 'bin'
 
     let is_windows = ($nu.os-info.family) == 'windows'

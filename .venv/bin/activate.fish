@@ -79,7 +79,7 @@ end
 # Unset irrelevant variables.
 deactivate nondestructive
 
-set -gx VIRTUAL_ENV '/Users/alexchortis/Desktop/genai_data_extractor/.venv'
+set -gx VIRTUAL_ENV '/Users/ac/Desktop/genai_data_extractor/.venv'
 
 # https://github.com/fish-shell/fish-shell/issues/436 altered PATH handling
 if test (echo $FISH_VERSION | head -c 1) -lt 3

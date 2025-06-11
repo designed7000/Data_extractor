@@ -25,7 +25,7 @@
     @"%SystemRoot%\System32\chcp.com" 65001 > nul
 )
 
-@for %%i in ("/Users/alexchortis/Desktop/genai_data_extractor/.venv") do @set "VIRTUAL_ENV=%%~fi"
+@for %%i in ("/Users/ac/Desktop/genai_data_extractor/.venv") do @set "VIRTUAL_ENV=%%~fi"
 
 @set "VIRTUAL_ENV_PROMPT=data-extractor"
 @if NOT DEFINED VIRTUAL_ENV_PROMPT (

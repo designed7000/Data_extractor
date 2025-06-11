@@ -1,4 +1,4 @@
-# E-commerce Price Tracker with GenAI Analysis
+# E-commerce Price Tracker with GenAI Analysis - CLEAN VERSION
 # Perfect CV project: Multi-site price monitoring + AI insights + Business value
 
 import requests
@@ -12,6 +12,8 @@ import re
 from urllib.parse import urlparse, urljoin
 import hashlib
 import os
+from requests.adapters import HTTPAdapter
+from requests.packages.urllib3.util.retry import Retry
 
 try:
     import google.generativeai as genai
@@ -29,17 +31,46 @@ class EcommercePriceTracker:
     def setup_session(self):
         """Setup realistic browser headers to avoid blocking"""
         self.session.headers.update({
-            'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-            'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,image/apng,*/*;q=0.8',
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36',
+            'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7',
             'Accept-Language': 'en-US,en;q=0.9',
-            'Accept-Encoding': 'gzip, deflate, br',
+            'Accept-Encoding': 'gzip, deflate, br, zstd',
+            'Cache-Control': 'no-cache',
             'Connection': 'keep-alive',
-            'Upgrade-Insecure-Requests': '1',
+            'DNT': '1',
+            'Pragma': 'no-cache',
+            'Sec-Ch-Ua': '"Not/A)Brand";v="8", "Chromium";v="126", "Google Chrome";v="126"',
+            'Sec-Ch-Ua-Mobile': '?0',
+            'Sec-Ch-Ua-Platform': '"Windows"',
             'Sec-Fetch-Dest': 'document',
             'Sec-Fetch-Mode': 'navigate',
-            'Sec-Fetch-Site': 'none'
+            'Sec-Fetch-Site': 'none',
+            'Sec-Fetch-User': '?1',
+            'Upgrade-Insecure-Requests': '1'
         })
-    
+        
+        # Set additional session attributes for better browser imitation
+        self.session.cookies.set_policy({
+            'strict_ns_domain': False,
+            'strict_ns_set_initial_dollar': False,
+            'strict_ns_set_path': False,
+        })
+        
+        # Enable cookie persistence
+        self.session.cookies.clear_session_cookies()
+        
+        # Set reasonable timeouts
+        self.session.timeout = (10, 30)  # (connection timeout, read timeout)
+        
+        retry_strategy = Retry(
+            total=3,
+            backoff_factor=1,
+            status_forcelist=[429, 500, 502, 503, 504],
+        )
+        adapter = HTTPAdapter(max_retries=retry_strategy)
+        self.session.mount("http://", adapter)
+        self.session.mount("https://", adapter)
+        
     def detect_ecommerce_platform(self, url):
         """Detect which e-commerce platform we're scraping"""
         
@@ -61,6 +92,27 @@ class EcommercePriceTracker:
             return 'bestbuy'
         else:
             return 'generic'
+    
+    def clean_price_text(self, price_text):
+        """Clean and deduplicate price text"""
+        if not price_text:
+            return None
+        
+        # Remove extra whitespace
+        price_text = price_text.strip()
+        
+        # Handle duplicated prices like "$69.99$69.99" for different currencies as well   
+        for currency in ['$','£', '€', '¥']:
+            if currency in price_text:
+                price_parts = [part for part in price_text.split(currency) if part.strip()]
+                if price_parts:
+                    first_price = re.sub(r'[^\d.,]', '', price_parts[0].strip())
+                    if first_price:
+                        return f"{currency}{first_price}"
+        
+        # If no currency symbol, just clean and return
+        cleaned = re.sub(r'[^\d.,\$£€¥]', '', price_text)
+        return cleaned if cleaned else None
     
     def scrape_category_products(self, category_url, max_products=50):
         """Scrape products from a category page"""
@@ -130,9 +182,31 @@ class EcommercePriceTracker:
                 link_elem = container.find('a', class_=lambda x: x and 's-link' in x)
                 product_url = urljoin(base_url, link_elem['href']) if link_elem and link_elem.get('href') else None
                 
-                # Price
-                price_elem = container.find(['span'], class_=lambda x: x and 'price' in x.lower())
-                price = price_elem.get_text(strip=True) if price_elem else None
+                # Price - improved extraction
+                price = None
+                price_selectors = [
+                    'span.a-price-whole',
+                    'span.a-price.a-text-price.a-size-medium.a-color-base',
+                    'span.a-price-range',
+                    '.a-price .a-offscreen',
+                    '.a-price-whole',
+                    '[data-a-size="xl"] .a-offscreen',
+                    '.a-price .a-price-whole'
+                ]
+                
+                for selector in price_selectors:
+                    price_elem = container.select_one(selector)
+                    if price_elem:
+                        price_text = price_elem.get_text(strip=True)
+                        # Clean up duplicated prices
+                        price = self.clean_price_text(price_text)
+                        break
+                
+                # If no price found with specific selectors, try general approach
+                if not price:
+                    price_elem = container.find(['span'], string=re.compile(r'\$[\d,]+(?:\.\d{2})?'))
+                    if price_elem:
+                        price = self.clean_price_text(price_elem.get_text(strip=True))
                 
                 # Rating
                 rating_elem = container.find(['span'], class_=lambda x: x and 'rating' in x.lower())
@@ -177,7 +251,8 @@ class EcommercePriceTracker:
                 
                 # Price
                 price_elem = container.find(['span'], class_=lambda x: x and 's-item__price' in x)
-                price = price_elem.get_text(strip=True) if price_elem else None
+                price_text = price_elem.get_text(strip=True) if price_elem else None
+                price = self.clean_price_text(price_text) if price_text else None
                 
                 # Image
                 img_elem = container.find('img')
@@ -219,7 +294,7 @@ class EcommercePriceTracker:
         
         for container in product_containers[:30]:  # Limit to avoid noise
             try:
-                # Find title (usually in h1-h6, a, or span with product-related classes)
+                # Find title
                 title_elem = (
                     container.find(['h1', 'h2', 'h3', 'h4', 'h5', 'h6']) or
                     container.find('a', class_=lambda x: x and any(word in x.lower() for word in ['title', 'name', 'product'])) or
@@ -231,13 +306,39 @@ class EcommercePriceTracker:
                 link_elem = container.find('a', href=True)
                 product_url = urljoin(base_url, link_elem['href']) if link_elem else None
                 
-                # Find price (look for currency symbols and price-related classes)
-                price_elem = (
-                    container.find(['span', 'div'], class_=lambda x: x and 'price' in x.lower()) or
-                    container.find(['span', 'div'], string=re.compile(r'[\$£€¥][\d,]+')) or
-                    container.find(['span', 'div'], string=re.compile(r'\d+\.\d{2}'))
-                )
-                price = price_elem.get_text(strip=True) if price_elem else None
+                # Find price - improved approach
+                price = None
+                
+                # Try price-specific selectors first
+                price_selectors = [
+                    {'class': lambda x: x and 'price' in x.lower()},
+                    {'class': lambda x: x and 'cost' in x.lower()},
+                    {'class': lambda x: x and 'amount' in x.lower()}
+                ]
+                
+                for selector in price_selectors:
+                    price_elem = container.find(['span', 'div', 'p'], selector)
+                    if price_elem:
+                        price_text = price_elem.get_text(strip=True)
+                        price = self.clean_price_text(price_text)
+                        if price:
+                            break
+                
+                # If no price found, look for currency patterns in text
+                if not price:
+                    # Look for elements containing currency symbols
+                    currency_patterns = [
+                        re.compile(r'[\$£€¥]\s*[\d,]+(?:\.\d{2})?'),
+                        re.compile(r'[\d,]+(?:\.\d{2})?\s*[\$£€¥]'),
+                        re.compile(r'\b\d+\.\d{2}\b')  # Decimal prices without currency
+                    ]
+                    
+                    container_text = container.get_text()
+                    for pattern in currency_patterns:
+                        match = pattern.search(container_text)
+                        if match:
+                            price = self.clean_price_text(match.group())
+                            break
                 
                 # Find image
                 img_elem = container.find('img')
@@ -278,7 +379,8 @@ class EcommercePriceTracker:
                 
                 # Price
                 price_elem = container.find(['span', 'div'], class_=lambda x: x and 'price' in x.lower())
-                price = price_elem.get_text(strip=True) if price_elem else None
+                price_text = price_elem.get_text(strip=True) if price_elem else None
+                price = self.clean_price_text(price_text) if price_text else None
                 
                 # Image
                 img_elem = container.find('img')
@@ -351,28 +453,39 @@ class EcommercePriceTracker:
             return {**product, 'error': str(e), 'scraped_at': datetime.now().isoformat()}
     
     def parse_price(self, price_text):
-        """Extract numeric price from price text"""
+        """Extract numeric price from price text - improved version"""
         
         if not price_text:
             return None
         
+        # First clean the price text
+        cleaned_price = self.clean_price_text(price_text)
+        if not cleaned_price:
+            return None
+        
         # Remove currency symbols and extract numbers
-        price_clean = re.sub(r'[^\d.,]', '', price_text)
+        price_clean = re.sub(r'[\$£€¥]', '', cleaned_price)
+        price_clean = re.sub(r'[^\d.,]', '', price_clean)
+        
+        if not price_clean:
+            return None
         
         # Handle different decimal separators
         if ',' in price_clean and '.' in price_clean:
-            # Assume format like 1,234.56
+            # Format like 1,234.56
             price_clean = price_clean.replace(',', '')
         elif ',' in price_clean:
-            # Could be 1,56 (European) or 1,234 (US)
+            # Could be 1,56 (European) or 1,234 (US thousands separator)
             if len(price_clean.split(',')[-1]) == 2:
+                # European decimal: 1,56 -> 1.56
                 price_clean = price_clean.replace(',', '.')
             else:
+                # US thousands: 1,234 -> 1234
                 price_clean = price_clean.replace(',', '')
         
         try:
             return float(price_clean)
-        except:
+        except (ValueError, TypeError):
             return None
     
     def analyze_with_ai(self, products):
@@ -628,6 +741,9 @@ def run_price_tracking_analysis():
         print("💰 PRICE TRACKING INSIGHTS")
         print("="*60)
         
+        if analysis.get('price_statistics'):
+            stats = analysis['price_statistics']
+            print(f"💵 Price Analysis:")
         if analysis.get('price_statistics'):
             stats = analysis['price_statistics']
             print(f"💵 Price Analysis:")
