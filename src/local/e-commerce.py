@@ -417,8 +417,8 @@ class EcommercePriceTracker:
             # Extract additional details
             details = {
                 **product,  # Keep original data
-                'scraped_at': datetime.now().isoformat(),
-                'product_id': hashlib.md5(product['url'].encode()).hexdigest()[:12]
+                'scraped_at': datetime.now().isoformat(), #! Datetime of the scraped product
+                'product_id': hashlib.md5(product['url'].encode()).hexdigest()[:12] #! Turns the url into an id
             }
             
             # Get description
