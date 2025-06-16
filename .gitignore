@@ -31,10 +31,11 @@ env/
 .env
 
 # AWS Deployment Artifacts
-aws-deployment/lambda-deployment-package.zip
+aws-deployment/lambda-deployment-package*.zip
 aws-deployment/package/
-aws-deployment/response.json
 aws-deployment/deployment/
+aws-deployment/response.json
+aws-deployment/test_payload.json
 
 # AWS Credentials & Sensitive Data
 credentials.json
@@ -89,6 +90,7 @@ tmp/
 # Package Managers
 pip-log.txt
 pip-delete-this-directory.txt
+uv.lock
 
 # MacOS
 .DS_Store
@@ -102,5 +104,4 @@ Desktop.ini
 
 # Project Specific
 src/messing/
-uv.lock
 AWSCLIV2.pkg

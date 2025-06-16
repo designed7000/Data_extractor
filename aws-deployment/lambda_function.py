@@ -1,6 +1,6 @@
 """
 AWS Lambda Price Tracker Function
-Compatible with Python 3.13 - Uses BeautifulSoup instead of lxml
+Improved version with better Amazon handling
 """
 
 import json
@@ -14,6 +14,7 @@ from datetime import datetime, timezone
 from decimal import Decimal
 from urllib.parse import urlparse
 import os
+import random
 
 # Configure logging
 logger = logging.getLogger()
@@ -35,13 +36,28 @@ class PriceExtractor:
     
     def __init__(self):
         self.session = requests.Session()
+        # Rotate between different realistic user agents
+        user_agents = [
+            'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+            'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+            'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:121.0) Gecko/20100101 Firefox/121.0',
+            'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.1 Safari/605.1.15'
+        ]
+        
+        selected_ua = random.choice(user_agents)
+        
         self.session.headers.update({
-            'User-Agent': self.get_parameter('/price-tracker/scraping/user-agent', 
-                                           'Mozilla/5.0 (compatible; PriceTracker/1.0)'),
-            'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
-            'Accept-Language': 'en-US,en;q=0.5',
-            'Accept-Encoding': 'gzip, deflate',
+            'User-Agent': selected_ua,
+            'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8',
+            'Accept-Language': 'en-GB,en-US;q=0.9,en;q=0.8',
+            'Accept-Encoding': 'gzip, deflate, br',
             'Connection': 'keep-alive',
+            'Upgrade-Insecure-Requests': '1',
+            'Sec-Fetch-Dest': 'document',
+            'Sec-Fetch-Mode': 'navigate',
+            'Sec-Fetch-Site': 'none',
+            'Sec-Fetch-User': '?1',
+            'Cache-Control': 'max-age=0'
         })
         
     def get_parameter(self, name, default=None):
@@ -58,22 +74,17 @@ class PriceExtractor:
         try:
             domain = urlparse(url).netloc.lower()
             
-            # Add delay to be respectful to servers
-            delay = float(self.get_parameter('/price-tracker/scraping/delay-seconds', '2'))
+            # Add random delay to be more human-like
+            delay = random.uniform(1, 4)
             time.sleep(delay)
             
-            response = self.session.get(url, timeout=30)
-            response.raise_for_status()
-            
-            # Parse HTML with BeautifulSoup
-            soup = BeautifulSoup(response.content, 'html.parser')
-            
+            # For Amazon, try different approaches
             if 'amazon' in domain:
-                return self._extract_amazon_price(soup)
+                return self._extract_amazon_price_robust(url)
             elif 'ebay' in domain:
-                return self._extract_ebay_price(soup)
+                return self._extract_ebay_price(url)
             else:
-                return self._extract_generic_price(soup)
+                return self._extract_generic_price(url)
                 
         except requests.exceptions.RequestException as e:
             logger.error(f"Request failed for {url}: {e}")
@@ -82,16 +93,96 @@ class PriceExtractor:
             logger.error(f"Price extraction failed for {url}: {e}")
             raise
     
-    def _extract_amazon_price(self, soup):
-        """Extract price from Amazon product page"""
-        # Amazon price selectors (multiple fallbacks)
+    def _extract_amazon_price_robust(self, url):
+        """Robust Amazon price extraction with multiple fallbacks"""
+        
+        # Try different Amazon endpoints and strategies
+        strategies = [
+            self._try_amazon_mobile,
+            self._try_amazon_api_style,
+            self._try_amazon_standard
+        ]
+        
+        for strategy in strategies:
+            try:
+                price = strategy(url)
+                if price:
+                    logger.info(f"Amazon price found using {strategy.__name__}: £{price}")
+                    return price
+            except Exception as e:
+                logger.warning(f"Strategy {strategy.__name__} failed: {e}")
+                continue
+        
+        raise ValueError("All Amazon price extraction strategies failed")
+    
+    def _try_amazon_mobile(self, url):
+        """Try mobile Amazon version (less likely to be blocked)"""
+        mobile_url = url.replace('www.amazon', 'm.amazon')
+        
+        response = self.session.get(mobile_url, timeout=10)
+        response.raise_for_status()
+        
+        soup = BeautifulSoup(response.content, 'html.parser')
+        
+        # Mobile-specific selectors
+        mobile_selectors = [
+            '.a-price-whole',
+            '#price_inside_buybox',
+            '.a-price .a-offscreen'
+        ]
+        
+        for selector in mobile_selectors:
+            elements = soup.select(selector)
+            for element in elements:
+                price_text = element.get_text(strip=True)
+                price = self._parse_price(price_text)
+                if price and price > 1:
+                    return price
+        
+        return None
+    
+    def _try_amazon_api_style(self, url):
+        """Try with different headers that mimic API calls"""
+        headers = {
+            'User-Agent': 'Mozilla/5.0 (compatible; Googlebot/2.1; +http://www.google.com/bot.html)',
+            'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+            'Accept-Language': 'en-US,en;q=0.5',
+            'Accept-Encoding': 'gzip, deflate',
+            'Connection': 'keep-alive'
+        }
+        
+        response = self.session.get(url, headers=headers, timeout=10)
+        response.raise_for_status()
+        
+        soup = BeautifulSoup(response.content, 'html.parser')
+        return self._extract_amazon_price_from_soup(soup)
+    
+    def _try_amazon_standard(self, url):
+        """Standard Amazon extraction"""
+        response = self.session.get(url, timeout=15)
+        response.raise_for_status()
+        
+        soup = BeautifulSoup(response.content, 'html.parser')
+        return self._extract_amazon_price_from_soup(soup)
+    
+    def _extract_amazon_price_from_soup(self, soup):
+        """Extract price from Amazon soup with comprehensive selectors"""
+        # Comprehensive list of Amazon price selectors
         price_selectors = [
+            '.a-price.a-text-price.a-size-medium.apexPriceToPay .a-offscreen',
             '.a-price .a-offscreen',
             '.a-price-whole',
             '#price_inside_buybox',
             '.a-price-range .a-offscreen',
             '#apex_desktop .a-price .a-offscreen',
-            '.a-price-symbol + .a-price-whole'
+            '.a-price-symbol + .a-price-whole',
+            '.a-price.a-text-price .a-offscreen',
+            '.a-offscreen',
+            '.a-price-current',
+            '[data-asin-price]',
+            '.a-price.a-text-price.a-size-medium.apexPriceToPay',
+            '.buybox-price',
+            '.header-price'
         ]
         
         for selector in price_selectors:
@@ -99,14 +190,32 @@ class PriceExtractor:
             for element in elements:
                 price_text = element.get_text(strip=True)
                 price = self._parse_price(price_text)
-                if price:
-                    logger.info(f"Amazon price found: {price}")
+                if price and price > 1:  # Valid price over £1
                     return price
         
-        raise ValueError("No price found on Amazon page")
+        # Try regex search in page text as last resort
+        page_text = soup.get_text()
+        price_patterns = [
+            r'£[\d,]+\.?\d*',
+            r'GBP\s*[\d,]+\.?\d*',
+            r'Price:\s*£([\d,]+\.?\d*)'
+        ]
+        
+        for pattern in price_patterns:
+            matches = re.findall(pattern, page_text)
+            for match in matches:
+                price = self._parse_price(match)
+                if price and price > 1 and price < 10000:  # Reasonable price range
+                    return price
+        
+        return None
     
-    def _extract_ebay_price(self, soup):
+    def _extract_ebay_price(self, url):
         """Extract price from eBay product page"""
+        response = self.session.get(url, timeout=15)
+        response.raise_for_status()
+        
+        soup = BeautifulSoup(response.content, 'html.parser')
         price_selectors = [
             '.mainPrice .price',
             '.u-flL .price',
@@ -125,8 +234,12 @@ class PriceExtractor:
         
         raise ValueError("No price found on eBay page")
     
-    def _extract_generic_price(self, soup):
+    def _extract_generic_price(self, url):
         """Extract price from generic website using common patterns"""
+        response = self.session.get(url, timeout=15)
+        response.raise_for_status()
+        
+        soup = BeautifulSoup(response.content, 'html.parser')
         # Common price class names and patterns
         price_patterns = [
             r'price',
@@ -164,7 +277,7 @@ class PriceExtractor:
             return None
             
         # Remove common non-numeric characters but keep decimal points
-        price_clean = re.sub(r'[^\d.,]', '', price_text)
+        price_clean = re.sub(r'[^\d.,]', '', str(price_text))
         
         if not price_clean:
             return None
@@ -182,7 +295,11 @@ class PriceExtractor:
                 price_clean = price_clean.replace(',', '')
         
         try:
-            return float(price_clean)
+            price = float(price_clean)
+            # Validate reasonable price range
+            if 0.01 <= price <= 50000:  # Between 1p and £50k
+                return price
+            return None
         except ValueError:
             return None
 
@@ -214,7 +331,7 @@ def save_price_history(product_id, url, price, previous_price=None):
             item['price_change_percent'] = Decimal(str((price - previous_price) / previous_price * 100))
         
         history_table.put_item(Item=item)
-        logger.info(f"Saved price history for product {product_id}: {price}")
+        logger.info(f"Saved price history for product {product_id}: £{price}")
         
     except Exception as e:
         logger.error(f"Failed to save price history: {e}")
@@ -386,3 +503,6 @@ if __name__ == "__main__":
     test_context = {}
     result = lambda_handler(test_event, test_context)
     print(json.dumps(result, indent=2))
+    
+    
+    
