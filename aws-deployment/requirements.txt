@@ -1,0 +1,34 @@
+# AWS Lambda Price Tracker Dependencies
+# Compatible with Python 3.13 and AWS Lambda
+
+# Core AWS SDK
+boto3==1.34.0
+botocore==1.34.0
+
+# HTTP requests
+requests==2.31.0
+urllib3==2.1.0
+
+# HTML parsing - using BeautifulSoup instead of lxml for compatibility
+beautifulsoup4==4.12.2
+
+# Alternative: If you need lxml specifically, use a newer version
+# lxml==5.1.0  # Uncomment if you want to try lxml 5.x which has better Python 3.13 support
+
+# JSON handling (built into Python, but listing for completeness)
+# json - built-in
+
+# Date/time handling (built into Python)
+# datetime - built-in
+
+# Logging (built into Python)
+# logging - built-in
+
+# Regular expressions (built into Python) 
+# re - built-in
+
+# Time utilities (built into Python)
+# time - built-in
+
+# Math utilities (built into Python)
+# math - built-in

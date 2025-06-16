@@ -1,0 +1,230 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: 'AWS Lambda Price Tracker Infrastructure - Minimal Version'
+
+Parameters:
+  NotificationEmail:
+    Type: String
+    Default: 'your-email@example.com'
+    Description: 'Email address for price alert notifications'
+
+Resources:
+  # DynamoDB Tables
+  ProductsTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: 'PriceTrackerProducts'
+      BillingMode: PAY_PER_REQUEST
+      AttributeDefinitions:
+        - AttributeName: 'product_id'
+          AttributeType: 'S'
+      KeySchema:
+        - AttributeName: 'product_id'
+          KeyType: HASH
+      TimeToLiveSpecification:
+        AttributeName: 'ttl'
+        Enabled: false
+      Tags:
+        - Key: 'Project'
+          Value: 'PriceTracker'
+
+  PriceHistoryTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: 'PriceTrackerHistory'
+      BillingMode: PAY_PER_REQUEST
+      AttributeDefinitions:
+        - AttributeName: 'product_id'
+          AttributeType: 'S'
+        - AttributeName: 'timestamp'
+          AttributeType: 'S'
+      KeySchema:
+        - AttributeName: 'product_id'
+          KeyType: HASH
+        - AttributeName: 'timestamp'
+          KeyType: RANGE
+      TimeToLiveSpecification:
+        AttributeName: 'ttl'
+        Enabled: true
+      Tags:
+        - Key: 'Project'
+          Value: 'PriceTracker'
+
+  PriceAlertsTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: 'PriceTrackerAlerts'
+      BillingMode: PAY_PER_REQUEST
+      AttributeDefinitions:
+        - AttributeName: 'alert_id'
+          AttributeType: 'S'
+      KeySchema:
+        - AttributeName: 'alert_id'
+          KeyType: HASH
+      TimeToLiveSpecification:
+        AttributeName: 'ttl'
+        Enabled: true
+      Tags:
+        - Key: 'Project'
+          Value: 'PriceTracker'
+
+  # IAM Role for Lambda
+  LambdaExecutionRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: 'PriceTrackerLambdaRole'
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action: 'sts:AssumeRole'
+      ManagedPolicyArns:
+        - 'arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole'
+      Policies:
+        - PolicyName: 'PriceTrackerDynamoDBAccess'
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - 'dynamodb:GetItem'
+                  - 'dynamodb:PutItem'
+                  - 'dynamodb:UpdateItem'
+                  - 'dynamodb:DeleteItem'
+                  - 'dynamodb:Scan'
+                  - 'dynamodb:Query'
+                Resource:
+                  - !GetAtt ProductsTable.Arn
+                  - !GetAtt PriceHistoryTable.Arn
+                  - !GetAtt PriceAlertsTable.Arn
+              - Effect: Allow
+                Action:
+                  - 'sns:Publish'
+                Resource: !Ref PriceAlertsTopic
+              - Effect: Allow
+                Action:
+                  - 'ssm:GetParameter'
+                  - 'ssm:GetParameters'
+                Resource: 'arn:aws:ssm:*:*:parameter/price-tracker/*'
+              - Effect: Allow
+                Action:
+                  - 'cloudwatch:PutMetricData'
+                Resource: '*'
+
+  # Lambda Function
+  PriceTrackerFunction:
+    Type: AWS::Lambda::Function
+    Properties:
+      FunctionName: 'price-tracker-function'
+      Runtime: 'python3.11'
+      Handler: 'lambda_function.lambda_handler'
+      Role: !GetAtt LambdaExecutionRole.Arn
+      Timeout: 300
+      MemorySize: 512
+      Code:
+        ZipFile: |
+          import json
+          def lambda_handler(event, context):
+              return {
+                  'statusCode': 200,
+                  'body': json.dumps('Price tracker function placeholder - will be updated with deployment package')
+              }
+      Environment:
+        Variables:
+          ENVIRONMENT: 'production'
+          LOG_LEVEL: 'INFO'
+          SNS_TOPIC_ARN: !Ref PriceAlertsTopic
+      Tags:
+        - Key: 'Project'
+          Value: 'PriceTracker'
+
+  # SNS Topic for Alerts
+  PriceAlertsTopic:
+    Type: AWS::SNS::Topic
+    Properties:
+      TopicName: 'price-alerts'
+      DisplayName: 'Price Tracker Alerts'
+      Tags:
+        - Key: 'Project'
+          Value: 'PriceTracker'
+
+  # SNS Email Subscription
+  EmailSubscription:
+    Type: AWS::SNS::Subscription
+    Properties:
+      Protocol: 'email'
+      TopicArn: !Ref PriceAlertsTopic
+      Endpoint: !Ref NotificationEmail
+
+  # CloudWatch Event Rule for Scheduling
+  PriceTrackerSchedule:
+    Type: AWS::Events::Rule
+    Properties:
+      Name: 'price-tracker-daily-schedule'
+      Description: 'Trigger price tracker Lambda function daily at 9 AM UTC'
+      ScheduleExpression: 'cron(0 9 * * ? *)'
+      State: ENABLED
+      Targets:
+        - Arn: !GetAtt PriceTrackerFunction.Arn
+          Id: 'PriceTrackerTarget'
+
+  # Permission for CloudWatch Events to invoke Lambda
+  LambdaInvokePermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      FunctionName: !Ref PriceTrackerFunction
+      Action: 'lambda:InvokeFunction'
+      Principal: 'events.amazonaws.com'
+      SourceArn: !GetAtt PriceTrackerSchedule.Arn
+
+  # CloudWatch Log Group
+  LambdaLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub '/aws/lambda/${PriceTrackerFunction}'
+      RetentionInDays: 14
+
+  # CloudWatch Alarms
+  LambdaErrorAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmName: 'PriceTracker-Lambda-Errors'
+      AlarmDescription: 'Alert when Lambda function has errors'
+      MetricName: 'Errors'
+      Namespace: 'AWS/Lambda'
+      Statistic: 'Sum'
+      Period: 300
+      EvaluationPeriods: 1
+      Threshold: 1
+      ComparisonOperator: 'GreaterThanOrEqualToThreshold'
+      Dimensions:
+        - Name: 'FunctionName'
+          Value: !Ref PriceTrackerFunction
+      AlarmActions:
+        - !Ref PriceAlertsTopic
+
+Outputs:
+  LambdaFunctionName:
+    Description: 'Name of the Lambda function'
+    Value: !Ref PriceTrackerFunction
+    Export:
+      Name: 'PriceTrackerLambdaFunction'
+
+  SNSTopicArn:
+    Description: 'ARN of the SNS topic for alerts'
+    Value: !Ref PriceAlertsTopic
+    Export:
+      Name: 'PriceTrackerSNSTopic'
+
+  ProductsTableName:
+    Description: 'Name of the Products DynamoDB table'
+    Value: !Ref ProductsTable
+
+  PriceHistoryTableName:
+    Description: 'Name of the Price History DynamoDB table'
+    Value: !Ref PriceHistoryTable
+
+  PriceAlertsTableName:
+    Description: 'Name of the Price Alerts DynamoDB table'
+    Value: !Ref PriceAlertsTable
