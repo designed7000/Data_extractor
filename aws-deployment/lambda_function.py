@@ -1,6 +1,6 @@
 """
 AWS Lambda Price Tracker Function
-Improved version with better Amazon handling
+Enhanced with Smart Price Analysis and Web API Support
 """
 
 import json
@@ -10,11 +10,13 @@ from bs4 import BeautifulSoup
 import re
 import time
 import logging
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
 from decimal import Decimal
 from urllib.parse import urlparse
 import os
 import random
+import statistics
+from collections import defaultdict
 
 # Configure logging
 logger = logging.getLogger()
@@ -30,6 +32,153 @@ cloudwatch = boto3.client('cloudwatch')
 products_table = dynamodb.Table('PriceTrackerProducts')
 history_table = dynamodb.Table('PriceTrackerHistory')
 alerts_table = dynamodb.Table('PriceTrackerAlerts')
+
+class PriceAnalyzer:
+    """Smart price analysis and predictions"""
+    
+    def __init__(self):
+        pass
+    
+    def analyze_price_history(self, product_id, days=30):
+        """Analyze price history and generate insights"""
+        try:
+            # Get price history for the last N days
+            cutoff_date = (datetime.now(timezone.utc) - timedelta(days=days)).isoformat()
+            
+            response = history_table.query(
+                KeyConditionExpression=boto3.dynamodb.conditions.Key('product_id').eq(product_id),
+                FilterExpression=boto3.dynamodb.conditions.Attr('timestamp').gte(cutoff_date),
+                ScanIndexForward=True  # Sort by timestamp ascending
+            )
+            
+            items = response.get('Items', [])
+            if len(items) < 2:
+                return self._default_analysis()
+            
+            prices = [float(item['price']) for item in items]
+            timestamps = [item['timestamp'] for item in items]
+            
+            analysis = {
+                'current_price': prices[-1],
+                'min_price': min(prices),
+                'max_price': max(prices),
+                'avg_price': statistics.mean(prices),
+                'price_volatility': statistics.stdev(prices) if len(prices) > 1 else 0,
+                'price_trend': self._calculate_trend(prices),
+                'days_analyzed': len(items),
+                'price_changes': self._analyze_price_changes(items),
+                'best_time_to_buy': self._recommend_buy_time(prices),
+                'savings_potential': self._calculate_savings_potential(prices),
+                'price_prediction': self._predict_next_price(prices)
+            }
+            
+            return analysis
+            
+        except Exception as e:
+            logger.error(f"Failed to analyze price history for {product_id}: {e}")
+            return self._default_analysis()
+    
+    def _default_analysis(self):
+        """Default analysis when insufficient data"""
+        return {
+            'current_price': 0,
+            'min_price': 0,
+            'max_price': 0,
+            'avg_price': 0,
+            'price_volatility': 0,
+            'price_trend': 'insufficient_data',
+            'days_analyzed': 0,
+            'price_changes': [],
+            'best_time_to_buy': 'insufficient_data',
+            'savings_potential': 0,
+            'price_prediction': 0
+        }
+    
+    def _calculate_trend(self, prices):
+        """Calculate overall price trend"""
+        if len(prices) < 3:
+            return 'stable'
+        
+        # Simple linear trend calculation
+        recent_avg = statistics.mean(prices[-7:]) if len(prices) >= 7 else statistics.mean(prices[-3:])
+        older_avg = statistics.mean(prices[:7]) if len(prices) >= 14 else statistics.mean(prices[:-3])
+        
+        change_percent = (recent_avg - older_avg) / older_avg * 100
+        
+        if change_percent > 5:
+            return 'increasing'
+        elif change_percent < -5:
+            return 'decreasing'
+        else:
+            return 'stable'
+    
+    def _analyze_price_changes(self, items):
+        """Analyze significant price changes"""
+        changes = []
+        for i in range(1, len(items)):
+            prev_price = float(items[i-1]['price'])
+            curr_price = float(items[i]['price'])
+            
+            if prev_price > 0:
+                change_percent = (curr_price - prev_price) / prev_price * 100
+                
+                if abs(change_percent) >= 5:  # Significant change
+                    changes.append({
+                        'timestamp': items[i]['timestamp'],
+                        'previous_price': prev_price,
+                        'current_price': curr_price,
+                        'change_percent': round(change_percent, 2),
+                        'change_type': 'increase' if change_percent > 0 else 'decrease'
+                    })
+        
+        return changes[-10:]  # Return last 10 significant changes
+    
+    def _recommend_buy_time(self, prices):
+        """Recommend best time to buy based on patterns"""
+        if len(prices) < 7:
+            return 'insufficient_data'
+        
+        current_price = prices[-1]
+        min_price = min(prices)
+        avg_price = statistics.mean(prices)
+        
+        # Calculate percentile of current price
+        sorted_prices = sorted(prices)
+        percentile = sorted_prices.index(min(sorted_prices, key=lambda x: abs(x - current_price))) / len(sorted_prices) * 100
+        
+        if current_price <= min_price * 1.05:  # Within 5% of historical minimum
+            return 'excellent_time'
+        elif current_price <= avg_price * 0.9:  # 10% below average
+            return 'good_time'
+        elif current_price <= avg_price * 1.1:  # Within 10% of average
+            return 'fair_time'
+        else:
+            return 'wait_for_drop'
+    
+    def _calculate_savings_potential(self, prices):
+        """Calculate potential savings if bought at lowest price"""
+        if len(prices) < 2:
+            return 0
+        
+        current_price = prices[-1]
+        min_price = min(prices)
+        
+        return max(0, current_price - min_price)
+    
+    def _predict_next_price(self, prices):
+        """Simple price prediction using moving average"""
+        if len(prices) < 5:
+            return prices[-1] if prices else 0
+        
+        # Simple moving average prediction
+        recent_prices = prices[-5:]
+        moving_avg = statistics.mean(recent_prices)
+        
+        # Weight more recent prices higher
+        weights = [1, 1.2, 1.4, 1.6, 2.0]
+        weighted_avg = sum(p * w for p, w in zip(recent_prices, weights)) / sum(weights)
+        
+        return round(weighted_avg, 2)
 
 class PriceExtractor:
     """Extract prices from various e-commerce sites using BeautifulSoup"""
@@ -216,6 +365,7 @@ class PriceExtractor:
         response.raise_for_status()
         
         soup = BeautifulSoup(response.content, 'html.parser')
+        
         price_selectors = [
             '.mainPrice .price',
             '.u-flL .price',
@@ -240,6 +390,7 @@ class PriceExtractor:
         response.raise_for_status()
         
         soup = BeautifulSoup(response.content, 'html.parser')
+        
         # Common price class names and patterns
         price_patterns = [
             r'price',
@@ -312,6 +463,39 @@ def get_products_to_track():
         return response.get('Items', [])
     except Exception as e:
         logger.error(f"Failed to get products: {e}")
+        return []
+
+def get_product_analytics(product_id):
+    """Get analytics for a specific product"""
+    try:
+        analyzer = PriceAnalyzer()
+        return analyzer.analyze_price_history(product_id)
+    except Exception as e:
+        logger.error(f"Failed to get analytics for {product_id}: {e}")
+        return {}
+
+def get_all_products_with_analytics():
+    """Get all products with their analytics data"""
+    try:
+        products = get_products_to_track()
+        analyzer = PriceAnalyzer()
+        
+        products_with_analytics = []
+        for product in products:
+            product_data = {
+                'product_id': product['product_id'],
+                'product_name': product.get('product_name', 'Unknown'),
+                'url': product.get('url', ''),
+                'last_price': float(product.get('last_price', 0)) if product.get('last_price') else 0,
+                'last_updated': product.get('last_updated', ''),
+                'active': product.get('active', False),
+                'analytics': analyzer.analyze_price_history(product['product_id'])
+            }
+            products_with_analytics.append(product_data)
+        
+        return products_with_analytics
+    except Exception as e:
+        logger.error(f"Failed to get products with analytics: {e}")
         return []
 
 def save_price_history(product_id, url, price, previous_price=None):
@@ -407,6 +591,100 @@ def lambda_handler(event, context):
     logger.info("Price tracker function started")
     
     try:
+        # Check if this is a web API request
+        if event.get('httpMethod'):
+            return handle_web_api_request(event, context)
+        
+        # Regular price tracking logic
+        return handle_price_tracking(event, context)
+        
+    except Exception as e:
+        logger.error(f"Lambda function failed: {e}")
+        send_cloudwatch_metrics('LambdaErrors', 1)
+        
+        return {
+            'statusCode': 500,
+            'body': json.dumps({
+                'error': str(e),
+                'timestamp': datetime.now(timezone.utc).isoformat()
+            })
+        }
+
+def handle_web_api_request(event, context):
+    """Handle web API requests for dashboard"""
+    try:
+        path = event.get('path', '')
+        method = event.get('httpMethod', 'GET')
+        
+        # Enable CORS
+        headers = {
+            'Access-Control-Allow-Origin': '*',
+            'Access-Control-Allow-Headers': 'Content-Type',
+            'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS'
+        }
+        
+        if method == 'OPTIONS':
+            return {
+                'statusCode': 200,
+                'headers': headers,
+                'body': ''
+            }
+        
+        if path == '/products' and method == 'GET':
+            # Get all products with analytics
+            products = get_all_products_with_analytics()
+            return {
+                'statusCode': 200,
+                'headers': headers,
+                'body': json.dumps(products, default=str)
+            }
+        
+        elif path == '/analytics' and method == 'GET':
+            # Get analytics for specific product
+            product_id = event.get('queryStringParameters', {}).get('product_id')
+            if product_id:
+                analytics = get_product_analytics(product_id)
+                return {
+                    'statusCode': 200,
+                    'headers': headers,
+                    'body': json.dumps(analytics, default=str)
+                }
+        
+        elif path == '/history' and method == 'GET':
+            # Get price history for specific product
+            product_id = event.get('queryStringParameters', {}).get('product_id')
+            if product_id:
+                # Get last 30 days of history
+                cutoff_date = (datetime.now(timezone.utc) - timedelta(days=30)).isoformat()
+                response = history_table.query(
+                    KeyConditionExpression=boto3.dynamodb.conditions.Key('product_id').eq(product_id),
+                    FilterExpression=boto3.dynamodb.conditions.Attr('timestamp').gte(cutoff_date),
+                    ScanIndexForward=True
+                )
+                
+                return {
+                    'statusCode': 200,
+                    'headers': headers,
+                    'body': json.dumps(response.get('Items', []), default=str)
+                }
+        
+        return {
+            'statusCode': 404,
+            'headers': headers,
+            'body': json.dumps({'error': 'Endpoint not found'})
+        }
+        
+    except Exception as e:
+        logger.error(f"Web API request failed: {e}")
+        return {
+            'statusCode': 500,
+            'headers': headers,
+            'body': json.dumps({'error': str(e)})
+        }
+
+def handle_price_tracking(event, context):
+    """Handle regular price tracking logic"""
+    try:
         # Initialize price extractor
         extractor = PriceExtractor()
         
@@ -485,7 +763,7 @@ def lambda_handler(event, context):
         return result
         
     except Exception as e:
-        logger.error(f"Lambda function failed: {e}")
+        logger.error(f"Price tracking failed: {e}")
         send_cloudwatch_metrics('LambdaErrors', 1)
         
         return {
@@ -503,6 +781,3 @@ if __name__ == "__main__":
     test_context = {}
     result = lambda_handler(test_event, test_context)
     print(json.dumps(result, indent=2))
-    
-    
-    
