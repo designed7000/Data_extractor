@@ -49,18 +49,12 @@ class EcommercePriceTracker:
             'Upgrade-Insecure-Requests': '1'
         })
         
-        # Set additional session attributes for better browser imitation
-        self.session.cookies.set_policy({
-            'strict_ns_domain': False,
-            'strict_ns_set_initial_dollar': False,
-            'strict_ns_set_path': False,
-        })
-        
-        # Enable cookie persistence
-        self.session.cookies.clear_session_cookies()
-        
         # Set reasonable timeouts
         self.session.timeout = (10, 30)  # (connection timeout, read timeout)
+        
+        # Enable retries with backoff
+        from requests.adapters import HTTPAdapter
+        from urllib3.util.retry import Retry
         
         retry_strategy = Retry(
             total=3,
