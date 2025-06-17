@@ -4,7 +4,7 @@ Description: 'AWS Lambda Price Tracker Infrastructure - Minimal Version'
 Parameters:
   NotificationEmail:
     Type: String
-    Default: 'your-email@example.com'
+    Default: 'alexander.tux@gmail.com'
     Description: 'Email address for price alert notifications'
 
 Resources:
