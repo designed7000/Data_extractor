@@ -13,15 +13,15 @@
 </p>
 
 
-## ✨ Features
+##  Features
 
-### 🎯 **Smart Price Tracking**
+###  **Smart Price Tracking**
 - **Multi-platform support**: Amazon, eBay, and generic e-commerce sites
 - **Intelligent scraping**: Rotating user agents and anti-bot measures
 - **Complete price history**: Time-series data with automated retention
 
 
-### 🔔 **Intelligent Alerting**
+###  **Intelligent Alerting**
 - **Configurable thresholds**: Customizable price change alerts (default: 5%)
 - **Email notifications**: Instant alerts via AWS SNS
 - **Alert history**: Complete tracking with auto-cleanup
@@ -33,7 +33,7 @@
 
 ---
 
-## 🏗️ Architecture
+##  Architecture
 
 ### **Serverless Cloud-Native Design**
 
@@ -66,7 +66,7 @@ graph TB
 
 ---
 
-## 🚀 Quick Start
+## Quick Start
 
 ### **Prerequisites**
 - AWS CLI configured with appropriate permissions
@@ -102,7 +102,7 @@ cat response.json
 
 ---
 
-## 📁 Project Structure
+##  Project Structure
 
 ```
 aws-serverless-price-tracker/
@@ -121,7 +121,7 @@ aws-serverless-price-tracker/
 
 ---
 
-## 💻 Usage
+##  Usage
 
 ### **Interactive Management**
 ```bash
@@ -164,7 +164,7 @@ aws dynamodb scan --table-name PriceTrackerProducts
 
 ---
 
-## 🔧 Configuration
+##  Configuration
 
 ### **Alert Thresholds**
 Modify alert sensitivity via Parameter Store:
@@ -193,7 +193,7 @@ ScheduleExpression: rate(6 hours)  # Every 6 hours instead of daily
 
 ---
 
-## 📊 Performance & Analytics
+##  Performance & Analytics
 
 ### **Real Performance Metrics**
 - **Execution time**: ~10-15 seconds per run
@@ -223,7 +223,7 @@ ScheduleExpression: rate(6 hours)  # Every 6 hours instead of daily
 
 ---
 
-## 🛡️ Security & Best Practices
+##  Security & Best Practices
 
 ### **Security Features**
 - **IAM roles**: Least-privilege access principles
@@ -239,7 +239,7 @@ ScheduleExpression: rate(6 hours)  # Every 6 hours instead of daily
 
 ---
 
-## 🚀 Deployment Options
+##  Deployment Options
 
 ### **Development Environment**
 ```bash
@@ -284,7 +284,7 @@ uv pip install -r requirements-dev.txt  # Development dependencies
 
 ---
 
-## 📋 Requirements
+##  Requirements
 
 ### **AWS Permissions Required**
 - Lambda (create, update, invoke)
@@ -306,7 +306,7 @@ uv pip install -r requirements-dev.txt  # Development dependencies
 
 ### **Common Issues**
 
-**❌ Price extraction fails**
+** Price extraction fails**
 ```bash
 # Check CloudWatch logs
 aws logs filter-log-events \
@@ -314,14 +314,14 @@ aws logs filter-log-events \
     --filter-pattern "ERROR"
 ```
 
-**❌ Email alerts not received**
+** Email alerts not received**
 ```bash
 # Verify SNS subscription
 aws sns list-subscriptions-by-topic \
     --topic-arn arn:aws:sns:us-east-1:ACCOUNT:price-alerts
 ```
 
-**❌ Deployment fails**
+** Deployment fails**
 ```bash
 # Check CloudFormation events
 aws cloudformation describe-stack-events \
@@ -337,7 +337,7 @@ export PRICE_TRACKER_DEBUG=true
 
 ---
 
-## 📊 Cost Analysis
+##  Cost Analysis
 
 ### **Monthly AWS Costs (Estimated)**
 
