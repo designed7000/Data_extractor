@@ -106,3 +106,5 @@ Desktop.ini
 src/messing/
 AWSCLIV2.pkg
 local code
+.venv
+uv.lock
