@@ -8,6 +8,10 @@
 [![Infrastructure as Code](https://img.shields.io/badge/IaC-CloudFormation-yellow?style=flat-square)](https://aws.amazon.com/cloudformation/)
 
 ---
+<p align="center">
+  <img src="price_tracker_menu.jpg" alt="AWS Serverless Price Tracker" width="800"/>
+</p>
+
 
 ## ✨ Features
 
@@ -15,23 +19,15 @@
 - **Multi-platform support**: Amazon, eBay, and generic e-commerce sites
 - **Intelligent scraping**: Rotating user agents and anti-bot measures
 - **Complete price history**: Time-series data with automated retention
-- **Advanced analytics**: Trend detection, volatility analysis, and buy recommendations
+
 
 ### 🔔 **Intelligent Alerting**
 - **Configurable thresholds**: Customizable price change alerts (default: 5%)
-- **Smart recommendations**: "Excellent time to buy" or "Wait for price drop"
 - **Email notifications**: Instant alerts via AWS SNS
 - **Alert history**: Complete tracking with auto-cleanup
 
-### 📊 **Advanced Analytics**
-- **Price trend analysis**: Detect increasing, decreasing, or stable patterns
-- **Historical insights**: Min/max tracking and savings potential
-- **Predictive analytics**: Simple forecasting using moving averages
-- **Volatility metrics**: Risk assessment for purchase timing
-
 ### **Production Features**
 - **24/7 automated monitoring**: Scheduled daily price checks
-- **RESTful API**: Ready for web dashboard integration
 - **Interactive management**: Command-line tools for easy administration
 - **Complete monitoring**: CloudWatch logs and system health metrics
 
@@ -371,8 +367,6 @@ export PRICE_TRACKER_DEBUG=true
 
 <div align="center">
 
-**Built with ❤️ using AWS Serverless Technologies**
-
-[🚀 Deploy Now](aws-deployment/) | [📖 Documentation](docs/) | [🤝 Contribute](CONTRIBUTING.md) | [📋 Changelog](CHANGELOG.md)
+[Deploy Now](aws-deployment/) 
 
 </div>
