@@ -9,7 +9,7 @@
 
 ---
 <p align="center">
-  <img src="price_tracker_menu.jpg" alt="AWS Serverless Price Tracker" width="800"/>
+  <img src="price_tracker_menu.jpg" alt="AWS Serverless Price Tracker" width="560"/>
 </p>
 
 
