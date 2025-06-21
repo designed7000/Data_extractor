@@ -1,6 +1,6 @@
-# 🚀 AWS Serverless Price Tracker
+# AWS Serverless Price Tracker
 
-> **Production-grade serverless price monitoring system** that automatically tracks e-commerce product prices, provides intelligent analytics, and sends smart alerts. Built with AWS cloud-native architecture for scalability and cost-efficiency.
+> **Production-grade serverless price monitoring system** that automatically tracks e-commerce product prices, provides sends smart alerts. Built with AWS cloud-native architecture for scalability and cost-efficiency.
 
 [![AWS](https://img.shields.io/badge/AWS-Lambda%20|%20DynamoDB%20|%20SNS-orange?style=flat-square&logo=amazon-aws)](https://aws.amazon.com/)
 [![Python](https://img.shields.io/badge/Python-3.11+-blue?style=flat-square&logo=python)](https://python.org/)
@@ -112,10 +112,8 @@ aws-serverless-price-tracker/
 │   ├── deploy.sh                    # Automated deployment
 │   ├── requirements.txt             # Python dependencies
 │   ├── manage_price_tracker.sh      # Management interface
-│   └── quick_commands.md           # Command reference
-├── src/                            # Additional source code
-├── data/                           # Sample data files
-├── docs/                           # Documentation
+│   ├── quick_commands.md          # Management interface
+│   └── shutdown-price-tracker.sh   # Shuts down deployment 
 ├── .gitignore                      # Git ignore rules
 ├── README.md                       # This file
 └── pyproject.toml                  # Python project config
