@@ -1,6 +1,6 @@
-# 🚀 Price Tracker Quick Commands Reference
+#  Price Tracker Quick Commands Reference
 
-## 📦 PRODUCT MANAGEMENT
+##  PRODUCT MANAGEMENT
 
 ### ➕ Add New Product
 ```bash
@@ -15,7 +15,7 @@ aws dynamodb put-item \
     }'
 ```
 
-### 🗑️ Remove Product
+###  Remove Product
 ```bash
 # Disable product (keeps history)
 aws dynamodb update-item \
@@ -30,7 +30,7 @@ aws dynamodb delete-item \
     --key '{"product_id": {"S": "PRODUCT-ID"}}'
 ```
 
-### ✅ Enable/Disable Product
+###  Enable/Disable Product
 ```bash
 # Enable product
 aws dynamodb update-item \
@@ -49,7 +49,7 @@ aws dynamodb update-item \
 
 ## 👀 VIEW DATA
 
-### 📋 View All Products
+###  View All Products
 ```bash
 aws dynamodb scan \
     --table-name PriceTrackerProducts \
@@ -57,7 +57,7 @@ aws dynamodb scan \
     --output table
 ```
 
-### ✅ View Active Products Only
+###  View Active Products Only
 ```bash
 aws dynamodb scan \
     --table-name PriceTrackerProducts \
@@ -67,7 +67,7 @@ aws dynamodb scan \
     --output table
 ```
 
-### 📈 View Price History
+###  View Price History
 ```bash
 # All price history
 aws dynamodb scan \
@@ -84,7 +84,7 @@ aws dynamodb query \
     --output table
 ```
 
-### 🚨 View Recent Alerts
+###  View Recent Alerts
 ```bash
 aws dynamodb scan \
     --table-name PriceTrackerAlerts \
@@ -92,9 +92,9 @@ aws dynamodb scan \
     --output table
 ```
 
-## 🧪 TESTING & MONITORING
+##  TESTING & MONITORING
 
-### 🚀 Test Price Tracking
+###  Test Price Tracking
 ```bash
 # Run price tracker manually
 aws lambda invoke \
@@ -102,7 +102,7 @@ aws lambda invoke \
     response.json && cat response.json && rm response.json
 ```
 
-### 📊 Test Analytics API
+###  Test Analytics API
 ```bash
 # Test products endpoint
 echo '{"httpMethod": "GET", "path": "/products"}' > test.json
@@ -119,7 +119,7 @@ aws lambda invoke \
     response.json && cat response.json && rm test.json response.json
 ```
 
-### 📋 View Recent Logs
+###  View Recent Logs
 ```bash
 # Get latest log stream
 LOG_STREAM=$(aws logs describe-log-streams \
@@ -138,7 +138,7 @@ aws logs get-log-events \
     --output text
 ```
 
-### 🏥 System Health Check
+###  System Health Check
 ```bash
 # Lambda function status
 aws lambda get-function \
@@ -155,9 +155,9 @@ aws sns list-topics \
     --query 'Topics[?contains(TopicArn, `price-alerts`)].TopicArn'
 ```
 
-## 🔧 CONFIGURATION
+##  CONFIGURATION
 
-### ⚙️ Update Alert Threshold
+###  Update Alert Threshold
 ```bash
 # Set to 10% change threshold
 aws ssm put-parameter \
@@ -174,7 +174,7 @@ aws ssm put-parameter \
     --overwrite
 ```
 
-### 🕒 Update Scraping Delay
+###  Update Scraping Delay
 ```bash
 # Set 3 second delay between requests
 aws ssm put-parameter \
@@ -184,7 +184,7 @@ aws ssm put-parameter \
     --overwrite
 ```
 
-## 📊 QUICK EXAMPLES
+##  QUICK EXAMPLES
 
 ### Example: Add Amazon Product
 ```bash
@@ -212,7 +212,7 @@ aws dynamodb put-item \
     }'
 ```
 
-## 🧹 CLEANUP COMMANDS
+##  CLEANUP COMMANDS
 
 ### Remove Test Products
 ```bash
@@ -229,7 +229,7 @@ aws dynamodb scan --table-name PriceTrackerAlerts --query 'Items[*].alert_id.S' 
 xargs -I {} aws dynamodb delete-item --table-name PriceTrackerAlerts --key '{"alert_id": {"S": "{}"}}'
 ```
 
-## 🎯 USEFUL ONE-LINERS
+##  USEFUL ONE-LINERS
 
 ### Quick Status Summary
 ```bash
@@ -250,7 +250,7 @@ aws dynamodb scan \
 
 ---
 
-## 💡 Tips
+##  Tips
 
 - **Product IDs**: Use lowercase with hyphens (e.g., `macbook-pro-m3`)
 - **URLs**: Use direct product URLs, avoid search pages
@@ -258,7 +258,7 @@ aws dynamodb scan \
 - **Monitoring**: Check logs after adding new products
 - **Alerts**: Adjust threshold based on product volatility
 
-## 🔗 Related Files
+##  Related Files
 
 - **Management Script**: `manage_price_tracker.sh` (interactive menu)
 - **Lambda Function**: `lambda_function.py` (main code)
