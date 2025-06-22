@@ -372,5 +372,5 @@ export PRICE_TRACKER_DEBUG=true
 ## License
 
 © 2025 Your Name.  
-Released under the [MIT License](LICENSE).  
+Released under the [MIT License](LICENCE).  
 Third-party components are listed in [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).
