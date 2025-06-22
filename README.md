@@ -293,7 +293,7 @@ uv pip install -r requirements-dev.txt  # Development dependencies
 
 ### **Common Issues**
 
-** Price extraction fails**
+Price extraction fails 
 ```bash
 # Check CloudWatch logs
 aws logs filter-log-events \
@@ -301,14 +301,14 @@ aws logs filter-log-events \
     --filter-pattern "ERROR"
 ```
 
-** Email alerts not received**
+Email alerts not received
 ```bash
 # Verify SNS subscription
 aws sns list-subscriptions-by-topic \
     --topic-arn arn:aws:sns:us-east-1:ACCOUNT:price-alerts
 ```
 
-** Deployment fails**
+Deployment fails
 ```bash
 # Check CloudFormation events
 aws cloudformation describe-stack-events \
