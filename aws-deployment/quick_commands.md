@@ -2,7 +2,7 @@
 
 ##  PRODUCT MANAGEMENT
 
-### ➕ Add New Product
+###  Add New Product
 ```bash
 aws dynamodb put-item \
     --table-name PriceTrackerProducts \
