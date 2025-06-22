@@ -1,0 +1,17 @@
+[
+  {
+    "License": "Apache Software License",
+    "Name": "boto3",
+    "Version": "1.38.13"
+  },
+  {
+    "License": "Apache Software License",
+    "Name": "requests",
+    "Version": "2.32.3"
+  },
+  {
+    "License": "MIT License",
+    "Name": "beautifulsoup4",
+    "Version": "4.13.3"
+  }
+]

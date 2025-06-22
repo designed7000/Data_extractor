@@ -368,3 +368,9 @@ export PRICE_TRACKER_DEBUG=true
 [Deploy Now](aws-deployment/) 
 
 </div>
+
+## License
+
+© 2025 Your Name.  
+Released under the [MIT License](LICENSE).  
+Third-party components are listed in [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).
