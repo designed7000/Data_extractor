@@ -75,7 +75,7 @@ graph TB
 
 ### **1. Clone Repository**
 ```bash
-git clone https://github.com/yourusername/aws-serverless-price-tracker.git
+git clone https://github.com/designed7000/Data_extractor.git
 cd aws-serverless-price-tracker
 ```
 
@@ -136,19 +136,6 @@ aws-serverless-price-tracker/
 5. View system logs
 6. Update alert settings
 
-### **API Endpoints**
-Once deployed, the system provides REST endpoints:
-
-```bash
-# Get all tracked products
-curl https://your-api-gateway-url/prod/products
-
-# Get price history for a product
-curl https://your-api-gateway-url/prod/history/{product_id}
-
-# Get recent alerts
-curl https://your-api-gateway-url/prod/alerts
-```
 
 ### **Direct AWS CLI Commands**
 ```bash
