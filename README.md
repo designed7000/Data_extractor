@@ -43,7 +43,6 @@ graph TB
     B --> C[DynamoDB<br/>3 Tables]
     B --> D[SNS<br/>Email Alerts]
     B --> E[Parameter Store<br/>Configuration]
-    F[API Gateway] --> B
     B --> G[CloudWatch Logs<br/>Monitoring]
     
     C --> C1[Products Table]
