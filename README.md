@@ -59,7 +59,6 @@ graph TB
 | **SNS** | Email notifications | Topic with confirmed subscription |
 | **CloudWatch Events** | Scheduling | Daily trigger at 9 AM UTC |
 | **Parameter Store** | Configuration management | Alert thresholds and settings |
-| **API Gateway** | REST endpoints | CORS-enabled for web integration |
 | **CloudFormation** | Infrastructure as Code | Complete stack definition |
 | **IAM** | Security and permissions | Least-privilege roles |
 
